@@ -19,7 +19,9 @@ package io.cloudevents.core.format;
 
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
+import io.cloudevents.core.CloudEventUtils;
 import io.cloudevents.rw.CloudEventDataMapper;
+import io.cloudevents.rw.CloudEventReader;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Collections;
@@ -45,7 +47,18 @@ public interface EventFormat {
      * @return the byte representation of the provided event.
      * @throws EventSerializationException if something goes wrong during serialization.
      */
-    byte[] serialize(CloudEvent event) throws EventSerializationException;
+    default byte[] toBytes(CloudEvent event) throws EventSerializationException {
+        return serialize(CloudEventUtils.toReader(event));
+    }
+
+    /**
+     * Serialize a {@link CloudEvent} to a byte array.
+     *
+     * @param event the event to serialize.
+     * @return the byte representation of the provided event.
+     * @throws EventSerializationException if something goes wrong during serialization.
+     */
+    byte[] serialize(CloudEventReader event) throws EventSerializationException;
 
     /**
      * Deserialize a byte array to a {@link CloudEvent}.
@@ -54,14 +67,14 @@ public interface EventFormat {
      * @return the deserialized event.
      * @throws EventDeserializationException if something goes wrong during deserialization.
      */
-    default CloudEvent deserialize(byte[] bytes) throws EventDeserializationException {
+    default CloudEventReader deserialize(byte[] bytes) throws EventDeserializationException {
         return this.deserialize(bytes, null);
     }
 
     /**
      * Like {@link EventFormat#deserialize(byte[])}, but allows a mapper that maps the parsed {@link io.cloudevents.CloudEventData} to another one.
      */
-    CloudEvent deserialize(byte[] bytes, CloudEventDataMapper<? extends CloudEventData> mapper) throws EventDeserializationException;
+    CloudEventReader deserialize(byte[] bytes, CloudEventDataMapper<? extends CloudEventData> mapper) throws EventDeserializationException;
 
     /**
      * @return the set of content types this event format can deserialize. These content types are used

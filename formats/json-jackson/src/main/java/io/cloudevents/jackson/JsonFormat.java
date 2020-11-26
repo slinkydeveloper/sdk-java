@@ -16,7 +16,6 @@
  */
 package io.cloudevents.jackson;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.cloudevents.CloudEvent;
@@ -27,7 +26,9 @@ import io.cloudevents.core.format.EventFormat;
 import io.cloudevents.core.format.EventSerializationException;
 import io.cloudevents.rw.CloudEventDataMapper;
 import io.cloudevents.rw.CloudEventRWException;
+import io.cloudevents.rw.CloudEventReader;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
@@ -68,12 +69,19 @@ public final class JsonFormat implements EventFormat {
     }
 
     @Override
-    public byte[] serialize(CloudEvent event) throws EventSerializationException {
+    public String serializedContentType() {
+        return CONTENT_TYPE;
+    }
+
+    @Override
+    public byte[] serialize(CloudEventReader reader) throws EventSerializationException {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
         try {
-            return mapper.writeValueAsBytes(event);
-        } catch (JsonProcessingException e) {
+            reader.read(new JsonWriter(mapper.createGenerator(stream), this.forceDataBase64Serialization, this.forceStringSerialization));
+        } catch (IOException e) {
             throw new EventSerializationException(e);
         }
+        return stream.toByteArray();
     }
 
     @Override
@@ -98,11 +106,6 @@ public final class JsonFormat implements EventFormat {
         } catch (CloudEventRWException e) {
             throw new EventDeserializationException(e);
         }
-    }
-
-    @Override
-    public String serializedContentType() {
-        return CONTENT_TYPE;
     }
 
     /**
