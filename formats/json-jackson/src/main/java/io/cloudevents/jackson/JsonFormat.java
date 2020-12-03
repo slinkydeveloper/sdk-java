@@ -18,14 +18,11 @@ package io.cloudevents.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.cloudevents.CloudEvent;
-import io.cloudevents.CloudEventData;
-import io.cloudevents.core.builder.CloudEventBuilder;
 import io.cloudevents.core.format.EventDeserializationException;
 import io.cloudevents.core.format.EventFormat;
 import io.cloudevents.core.format.EventSerializationException;
-import io.cloudevents.rw.CloudEventDataMapper;
-import io.cloudevents.rw.CloudEventRWException;
 import io.cloudevents.rw.CloudEventReader;
 
 import java.io.ByteArrayOutputStream;
@@ -74,7 +71,7 @@ public final class JsonFormat implements EventFormat {
     }
 
     @Override
-    public byte[] serialize(CloudEventReader reader) throws EventSerializationException {
+    public byte[] fromReader(CloudEventReader reader) throws EventSerializationException {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         try {
             reader.read(new JsonWriter(mapper.createGenerator(stream), this.forceDataBase64Serialization, this.forceStringSerialization));
@@ -85,26 +82,14 @@ public final class JsonFormat implements EventFormat {
     }
 
     @Override
-    public CloudEvent deserialize(byte[] bytes) throws EventDeserializationException {
+    public CloudEventReader toReader(byte[] bytes) throws EventDeserializationException {
         try {
-            return mapper.readValue(bytes, CloudEvent.class);
+            // In future we could eventually find a better solution avoiding this buffering step, but now this is the best option
+            // Other sdk does the same in order to support all versions
+            ObjectNode node = mapper.readValue(bytes, ObjectNode.class);
+            return new JsonReader(mapper.createParser(bytes), node);
         } catch (IOException e) {
-            throw new EventDeserializationException(e);
-        }
-    }
-
-    @Override
-    public CloudEvent deserialize(byte[] bytes, CloudEventDataMapper<? extends CloudEventData> mapper) throws EventDeserializationException {
-        CloudEvent deserialized = this.deserialize(bytes);
-        if (deserialized.getData() == null) {
-            return deserialized;
-        }
-        try {
-            return CloudEventBuilder.from(deserialized)
-                .withData(mapper.map(deserialized.getData()))
-                .build();
-        } catch (CloudEventRWException e) {
-            throw new EventDeserializationException(e);
+            throw new EventSerializationException(e);
         }
     }
 

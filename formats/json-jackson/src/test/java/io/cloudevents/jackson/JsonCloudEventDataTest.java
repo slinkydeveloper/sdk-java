@@ -39,7 +39,7 @@ public class JsonCloudEventDataTest {
             .serialize(event);
 
         CloudEvent deserialized = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE)
-            .deserialize(serialized, data -> {
+            .toReader(serialized, data -> {
                 assertThat(data)
                     .isInstanceOf(JsonCloudEventData.class);
                 assertThat(((JsonCloudEventData) data).getNode().isInt())

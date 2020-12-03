@@ -79,7 +79,7 @@ class JsonFormatTest {
     @ParameterizedTest
     @MethodSource("deserializeTestArguments")
     void deserialize(String inputFile, CloudEvent output) {
-        CloudEvent deserialized = getFormat().deserialize(loadFile(inputFile));
+        CloudEvent deserialized = getFormat().toReader(loadFile(inputFile));
         assertThat(deserialized)
             .isEqualTo(output);
     }
@@ -90,7 +90,7 @@ class JsonFormatTest {
         byte[] input = loadFile(inputFile);
 
         JsonNode jsonInput = mapper.readTree(input);
-        CloudEvent deserialized = getFormat().deserialize(input);
+        CloudEvent deserialized = getFormat().toReader(input);
         assertThat(deserialized).isNotNull();
 
         byte[] output = getFormat().serialize(deserialized);
@@ -105,7 +105,7 @@ class JsonFormatTest {
         byte[] serialized = getFormat().serialize(input);
         assertThat(serialized).isNotEmpty();
 
-        CloudEvent output = getFormat().deserialize(serialized);
+        CloudEvent output = getFormat().toReader(serialized);
         assertThat(output).isEqualTo(normalizeToJsonValueIfNeeded(input));
     }
 

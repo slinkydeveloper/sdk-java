@@ -20,8 +20,11 @@ package io.cloudevents.core.format;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import io.cloudevents.core.CloudEventUtils;
+import io.cloudevents.core.builder.CloudEventBuilder;
 import io.cloudevents.rw.CloudEventDataMapper;
 import io.cloudevents.rw.CloudEventReader;
+import io.cloudevents.rw.CloudEventWriter;
+import io.cloudevents.rw.CloudEventWriterFactory;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Collections;
@@ -47,18 +50,7 @@ public interface EventFormat {
      * @return the byte representation of the provided event.
      * @throws EventSerializationException if something goes wrong during serialization.
      */
-    default byte[] toBytes(CloudEvent event) throws EventSerializationException {
-        return serialize(CloudEventUtils.toReader(event));
-    }
-
-    /**
-     * Serialize a {@link CloudEvent} to a byte array.
-     *
-     * @param event the event to serialize.
-     * @return the byte representation of the provided event.
-     * @throws EventSerializationException if something goes wrong during serialization.
-     */
-    byte[] serialize(CloudEventReader event) throws EventSerializationException;
+    CloudEventWriterFactory<CloudEventWriter<byte[]>, byte[]> createWriterFactory() throws EventSerializationException;
 
     /**
      * Deserialize a byte array to a {@link CloudEvent}.
@@ -67,14 +59,26 @@ public interface EventFormat {
      * @return the deserialized event.
      * @throws EventDeserializationException if something goes wrong during deserialization.
      */
-    default CloudEventReader deserialize(byte[] bytes) throws EventDeserializationException {
-        return this.deserialize(bytes, null);
-    }
+    CloudEventReader toReader(byte[] bytes) throws EventDeserializationException;
 
     /**
-     * Like {@link EventFormat#deserialize(byte[])}, but allows a mapper that maps the parsed {@link io.cloudevents.CloudEventData} to another one.
+     * Serialize a {@link CloudEvent} to a byte array.
+     *
+     * @param event the event to serialize.
+     * @return the byte representation of the provided event.
+     * @throws EventSerializationException if something goes wrong during serialization.
      */
-    CloudEventReader deserialize(byte[] bytes, CloudEventDataMapper<? extends CloudEventData> mapper) throws EventDeserializationException;
+    default byte[] serialize(CloudEvent event) throws EventSerializationException {
+        return CloudEventUtils.toReader(event).read(createWriterFactory());
+    }
+
+    default CloudEvent deserialize(byte[] bytes) throws EventDeserializationException {
+        return deserialize(bytes, CloudEventDataMapper.identity());
+    }
+
+    default CloudEvent deserialize(byte[] bytes, CloudEventDataMapper<? extends CloudEventData> mapper) throws EventDeserializationException {
+        return toReader(bytes).read(CloudEventBuilder::fromSpecVersion, mapper);
+    }
 
     /**
      * @return the set of content types this event format can deserialize. These content types are used
